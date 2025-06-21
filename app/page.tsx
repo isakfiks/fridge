@@ -79,7 +79,7 @@ export default function Home() {
 
   useEffect(() => {
     fetchPosts();
-  }, []);
+  }, []);//
 
   const handlePostCreated = () => {
     fetchPosts();
@@ -87,28 +87,30 @@ export default function Home() {
 
   return (
     <div className="bg-[#FFF1CA] min-h-screen font-[family-name:var(--font-geist-sans)]">
-      <header className="sticky top-0 z-10 bg-[#FFF1CA] items-center flex w-full justify-between p-8 pt-8 pb-4">
-        <div className="flex items-center">
-          <h1 className="text-black text-xl mr-2">Fridge</h1>
-          <h1 className="text-black text-xl mr-2">|</h1>
-          <FaGlobe className="text-black text-xl mr-2"></FaGlobe>
-          <h1 className="text-black text-xl font-bold">Global</h1>
+      <header className="sticky top-0 z-10 bg-[#FFF1CA] border-b border-[#FFB823]/20 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <h1 className="text-black text-2xl font-semibold">Fridge</h1>
+            <div className="w-px h-6 bg-black/20"></div>
+            <FaGlobe className="text-black text-xl"></FaGlobe>
+            <h1 className="text-black text-xl font-bold">Global</h1>
+          </div>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-[#FFB823] px-6 py-3 text-black rounded-xl hover:bg-[#ffad00] transition-colors font-medium shadow-sm"
+          >
+            New Post
+          </button>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-[#FFB823] p-2 text-black rounded-xl hover:bg-[#ffad00]"
-        >
-          New Post
-        </button>
       </header>
 
-      <main className="p-8 pt-4">
+      <main className="max-w-7xl mx-auto px-6 py-8">
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="text-black text-lg">Loading posts...</div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full items-start">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {posts.map((post) => (
               <PostCard key={post.id} post={post} />
             ))}

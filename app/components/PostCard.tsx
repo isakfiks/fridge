@@ -49,36 +49,52 @@ export default function PostCard({ post }: PostCardProps) {
       setIsReacting(false)
     }
   }
-
   return (
-    <div className="shadow-lg rounded-lg text-black bg-[#FFB823] p-8 w-full">
-      <p className="flex justify-center items-center text-lg font-semibold">
-        {post.title} {reactions >= 50 && (
-          <div className="items-center p-1 rounded-lg ml-2 bg-white">
-            <FaStar></FaStar>
-          </div>
-        )}
-      </p>
-      <p>{post.description}</p>
+    <div className="bg-[#FFB823] rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow w-full">
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-lg font-semibold text-black line-clamp-2">
+            {post.title}
+          </h3>
+          {reactions >= 50 && (
+            <div className="bg-white p-2 rounded-lg flex-shrink-0 ml-2">
+              <FaStar className="text-[#FFB823]" />
+            </div>
+          )}
+        </div>
+        <p className="text-black/80 text-sm leading-relaxed line-clamp-3">
+          {post.description}
+        </p>
+      </div>
+
       {post.hasImage && (
-        <div className="mt-4 flex justify-center">
-          <Image className="rounded-lg border-2 border-black" width="200" height="200" src={post.image} alt="placeholder"></Image>
+        <div className="mb-4">
+          <Image 
+            className="rounded-lg border border-black/10 w-full h-40 object-cover" 
+            width={300} 
+            height={160} 
+            src={post.image} 
+            alt={post.title}
+          />
         </div>
       )}
-      <div className="flex justify-center">
-        <p className="mr-4 mt-4 justify-center items-center flex">
-          <FaUser className="mr-1"></FaUser>
-          {post.author}
-        </p>
+
+      <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center text-black/70">
+          <FaUser className="mr-2" />
+          <span className="font-medium">{post.author}</span>
+        </div>
         <button 
           onClick={handleReaction}
           disabled={isReacting || hasReacted}
-          className={`mt-4 justify-center items-center flex transition-colors ${
-            hasReacted ? 'text-red-600' : 'hover:text-red-500'
-          } ${isReacting ? 'opacity-50' : ''}`}
+          className={`flex items-center space-x-1 px-3 py-1 rounded-full transition-colors ${
+            hasReacted 
+              ? 'text-red-600 bg-red-50' 
+              : 'text-black/70 hover:text-red-500 hover:bg-white/20'
+          } ${isReacting ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-          <FaHeart className={`mr-1 ${hasReacted ? 'text-red-600' : ''}`}></FaHeart>
-          {reactions}
+          <FaHeart className={hasReacted ? 'text-red-600' : ''} />
+          <span className="font-medium">{reactions}</span>
         </button>
       </div>
     </div>

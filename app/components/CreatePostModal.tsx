@@ -80,23 +80,23 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }: Crea
   }
 
   if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#FFF1CA] rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-black">Create New Post</h2>          <button
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-[#FFF1CA] rounded-xl shadow-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-black">Create New Post</h2>
+          <button
             onClick={handleClose}
-            className="text-black hover:text-gray-600 text-xl"
+            className="text-black/60 hover:text-black transition-colors text-xl p-1"
             aria-label="Close modal"
           >
             <FaTimes />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label htmlFor="title" className="block text-sm font-medium text-black mb-1">
+            <label htmlFor="title" className="block text-sm font-medium text-black mb-2">
               Title
             </label>
             <input
@@ -104,14 +104,14 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }: Crea
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="text-black w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB823]"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFB823] text-black bg-white"
               required
-              placeholder='give ur post a title'
+              placeholder="Give your post a title"
             />
           </div>
 
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-black mb-1">
+            <label htmlFor="description" className="block text-sm font-medium text-black mb-2">
               Description
             </label>
             <textarea
@@ -119,14 +119,14 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }: Crea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="text-black w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB823] resize-none"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFB823] resize-none text-black bg-white"
               required
-              placeholder='what the post contains'
+              placeholder="What does this post contain?"
             />
           </div>
 
           <div>
-            <label htmlFor="author" className="block text-sm font-medium text-black mb-1">
+            <label htmlFor="author" className="block text-sm font-medium text-black mb-2">
               Author
             </label>
             <input
@@ -134,18 +134,18 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }: Crea
               id="author"
               value={author}
               onChange={(e) => setAuthor(e.target.value)}
-              className="text-black w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB823]"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFB823] text-black bg-white"
               required
-              placeholder='who wrote this post..?'
+              placeholder="Who wrote this post?"
             />
           </div>
 
           <div>
-            <label htmlFor="image" className="block text-sm font-medium text-black mb-1">
+            <label htmlFor="image" className="block text-sm font-medium text-black mb-2">
               Image (optional)
             </label>
-            <div className="flex items-center space-x-2">
-              <label className="flex items-center px-3 py-2 bg-[#FFB823] text-black rounded-md cursor-pointer hover:bg-[#ffad00] transition-colors">
+            <div className="flex items-center space-x-3">
+              <label className="flex items-center px-4 py-2 bg-[#FFB823] text-black rounded-lg cursor-pointer hover:bg-[#ffad00] transition-colors font-medium">
                 <FaImage className="mr-2" />
                 Choose Image
                 <input
@@ -157,31 +157,32 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }: Crea
                 />
               </label>
               {image && (
-                <span className="text-sm text-black">{image.name}</span>
+                <span className="text-sm text-black/70 truncate max-w-[200px]">{image.name}</span>
               )}
             </div>
             {imagePreview && (
-              <div className="mt-2">
+              <div className="mt-3">
                 <img
                   src={imagePreview}
                   alt="Preview"
-                  className="w-full h-32 object-cover rounded-md border border-gray-300"
+                  className="w-full h-32 object-cover rounded-lg border border-gray-200"
                 />
               </div>
             )}
           </div>
 
-          <div className="flex space-x-3 pt-4">
+          <div className="flex space-x-3 pt-6">
             <button
               type="button"
               onClick={handleClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-black rounded-md hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 py-3 border border-gray-300 text-black rounded-lg hover:bg-gray-50 transition-colors font-medium"
             >
               Cancel
-            </button>            <button
+            </button>
+            <button
               type="submit"
               disabled={isSubmitting}
-              className={`flex-1 px-4 py-2 bg-[#FFB823] text-black rounded-md hover:bg-[#ffad00] transition-colors font-medium ${
+              className={`flex-1 px-4 py-3 bg-[#FFB823] text-black rounded-lg hover:bg-[#ffad00] transition-colors font-medium ${
                 isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
