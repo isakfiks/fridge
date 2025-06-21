@@ -3,9 +3,10 @@ import { supabase } from '@/lib/supabase'
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params
     const postId = parseInt(params.id)
     
     if (isNaN(postId)) {
