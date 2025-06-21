@@ -59,27 +59,31 @@ export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchPosts() {
-      try {
-        const res = await fetch('/api/no-login/posts', {
-          cache: 'no-store'
-        });
-        
-        if (res.ok) {
-          const data = await res.json();
-          setPosts(data);
-        }
-      } catch (error) {
-        console.error('Error fetching posts:', error);
-        // Keep mock data as fallback
-      } finally {
-        setLoading(false);
+  const fetchPosts = async () => {
+    try {
+      const res = await fetch('/api/no-login/posts', {
+        cache: 'no-store'
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setPosts(data);
       }
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      // Keep mock data as fallback
+    } finally {
+      setLoading(false);
     }
+  };
 
+  useEffect(() => {
     fetchPosts();
   }, []);
+
+  const handlePostCreated = () => {
+    fetchPosts();
+  };
 
   return (
     <div className="bg-[#FFF1CA] min-h-screen font-[family-name:var(--font-geist-sans)]">
@@ -114,7 +118,8 @@ export default function Home() {
 
       <CreatePostModal 
         isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+        onClose={() => setIsModalOpen(false)}
+        onPostCreated={handlePostCreated}
       />
     </div>
   );

@@ -51,7 +51,7 @@ export default function PostCard({ post }: PostCardProps) {
   }
 
   return (
-    <div className="rounded-lg text-black bg-[#FFB823] p-8 w-full">
+    <div className="shadow-lg rounded-lg text-black bg-[#FFB823] p-8 w-full">
       <p className="flex justify-center items-center text-lg font-semibold">
         {post.title} {reactions >= 50 && (
           <div className="items-center p-1 rounded-lg ml-2 bg-white">

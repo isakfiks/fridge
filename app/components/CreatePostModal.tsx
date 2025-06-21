@@ -6,14 +6,16 @@ import { FaTimes, FaImage } from 'react-icons/fa'
 interface CreatePostModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onPostCreated: () => void;
 }
 
-export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProps) {
+export default function CreatePostModal({ isOpen, onClose, onPostCreated }: CreatePostModalProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [author, setAuthor] = useState('')
   const [image, setImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -26,18 +28,46 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
       reader.readAsDataURL(file)
     }
   }
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // API req will be added here
-    console.log('Creating post:', { title, description, author, image })
     
-    setTitle('')
-    setDescription('')
-    setAuthor('')
-    setImage(null)
-    setImagePreview(null)
-    onClose()
+    if (isSubmitting) return
+    
+    setIsSubmitting(true)
+    
+    try {
+      const formData = new FormData()
+      formData.append('title', title)
+      formData.append('description', description)
+      formData.append('author', author)
+      formData.append('hasImage', image ? 'true' : 'false')
+      
+      if (image) {
+        formData.append('image', image)
+      }
+
+      const response = await fetch('/api/no-login/posts', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (response.ok) {
+        // Reset form
+        setTitle('')
+        setDescription('')
+        setAuthor('')
+        setImage(null)
+        setImagePreview(null)
+        onClose()
+        onPostCreated() // Refresh the posts list
+      } else {
+        console.error('Failed to create post')
+      }
+    } catch (error) {
+      console.error('Error creating post:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleClose = () => {
@@ -148,12 +178,14 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
               className="flex-1 px-4 py-2 border border-gray-300 text-black rounded-md hover:bg-gray-50 transition-colors"
             >
               Cancel
-            </button>
-            <button
+            </button>            <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-[#FFB823] text-black rounded-md hover:bg-[#ffad00] transition-colors font-medium"
+              disabled={isSubmitting}
+              className={`flex-1 px-4 py-2 bg-[#FFB823] text-black rounded-md hover:bg-[#ffad00] transition-colors font-medium ${
+                isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
-              Create Post
+              {isSubmitting ? 'Creating...' : 'Create Post'}
             </button>
           </div>
         </form>
