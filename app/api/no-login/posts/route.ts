@@ -2,20 +2,35 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { put } from '@vercel/blob'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const { data: posts, error } = await supabase
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '8')
+    const offset = (page - 1) * limit
+
+    const { data: posts, error, count } = await supabase
       .from('posts')
-      .select('*')
+      .select('*', { count: 'exact' })
       .is('channel_id', null)
+      .order('reactions', { ascending: false })
       .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
 
     if (error) {
       console.error('Error fetching posts:', error)
       return NextResponse.json({ error: 'Failed to fetch posts' }, { status: 500 })
     }
 
-    return NextResponse.json(posts)
+    return NextResponse.json({
+      posts,
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        hasMore: (count || 0) > offset + limit,
+      },
+    })
   } catch (error) {
     console.error('Unexpected error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -57,7 +72,7 @@ export async function POST(request: NextRequest) {
           author,
           hasImage: hasImage && imagePath !== '',
           reactions: 0,
-        }
+        },
       ])
       .select()
       .single()

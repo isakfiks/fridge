@@ -19,7 +19,7 @@ export async function POST(
       return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
     }
     const { error: updateError } = await supabase
-      .rpc('increment_member_count', { channel_id: channelId });
+      .rpc('decrement_member_count', { channel_id: channelId });
 
     if (updateError) {
       console.error('Error updating member count:', updateError);
@@ -27,12 +27,12 @@ export async function POST(
     
     return NextResponse.json({ 
       success: true, 
-      message: `Successfully joined channel ${channel.name}`,
+      message: `Successfully left channel ${channel.name}`,
       channelId: channelId,
       channelName: channel.name
     });
   } catch (error) {
-    console.error('Error joining channel:', error);
-    return NextResponse.json({ error: 'Failed to join channel' }, { status: 500 });
+    console.error('Error leaving channel:', error);
+    return NextResponse.json({ error: 'Failed to leave channel' }, { status: 500 });
   }
 }

@@ -31,49 +31,6 @@ interface Channel {
   verified: boolean;
 }
 
-const mockPosts: Post[] = [
-  {
-    id: 0,
-    title: "Some catchy post title",
-    description: "Post description bla bla bla..",
-    image: "/post.jpg",
-    author: "lorem",
-    hasImage: true,
-    reactions: 56,
-    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() // 2 hours ago
-  },
-  {
-    id: 1,
-    title: "Some catchy post title",
-    description: "Post description bla bla bla..",
-    image: "",
-    author: "ipsum",
-    hasImage: false,
-    reactions: 20,
-    created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() // 1 day ago
-  },
-  {
-    id: 2,
-    title: "Some catchy post title",
-    description: "Post description bla bla bla..",
-    image: "",
-    author: "ranoutof",
-    hasImage: false,
-    reactions: 20,
-    created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() // 3 days ago
-  },
-  {
-    id: 3,
-    title: "Some catchy post title",
-    description: "Post description bla bla bla..",
-    image: "",
-    author: "placeholders",
-    hasImage: false,
-    reactions: 20,
-    created_at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString() // 6 days ago
-  },
-];
-
 const Tooltip = ({ children, text }: { children: React.ReactNode; text: string }) => {
   return (
     <div className="relative group">
@@ -87,9 +44,16 @@ const Tooltip = ({ children, text }: { children: React.ReactNode; text: string }
 };
 
 export default function Home() {
-  const [posts, setPosts] = useState<Post[]>(mockPosts);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 8,
+    total: 0,
+    hasMore: false
+  });
   const [sortBy, setSortBy] = useState<'reactions' | 'date'>('reactions');
   const [dateFilter, setDateFilter] = useState<'24h' | '3d' | '7d'>('7d');
   const [viewMode, setViewMode] = useState<'global' | 'channel'>('global');
@@ -100,13 +64,19 @@ export default function Home() {
   
   const { joinedChannels, joinChannel: addToJoined, leaveChannel: removeFromJoined, isJoined } = useJoinedChannels();
 
-  const fetchPosts = async () => {
+  const fetchPosts = async (reset = false) => {
+    const currentPage = reset ? 1 : pagination.page;
+    
+    if (!reset) {
+      setLoadingMore(true);
+    }
+    
     try {
       const endpoint = viewMode === 'global' 
-        ? '/api/no-login/posts' 
+        ? `/api/no-login/posts?page=${currentPage}&limit=${pagination.limit}` 
         : selectedChannel 
-          ? `/api/no-login/channels/${selectedChannel}/posts`
-          : '/api/no-login/posts';
+          ? `/api/no-login/channels/${selectedChannel}/posts?page=${currentPage}&limit=${pagination.limit}`
+          : `/api/no-login/posts?page=${currentPage}&limit=${pagination.limit}`;
           
       const res = await fetch(endpoint, {
         cache: 'no-store'
@@ -114,13 +84,31 @@ export default function Home() {
       
       if (res.ok) {
         const data = await res.json();
-        setPosts(data);
+        
+        if (data.posts) {
+          if (reset) {
+            setPosts(data.posts);
+          } else {
+            setPosts(prev => [...prev, ...data.posts]);
+          }
+          setPagination(prev => ({
+            ...prev,
+            page: currentPage + 1,
+            total: data.pagination.total,
+            hasMore: data.pagination.hasMore
+          }));
+        } else {
+          if (reset) {
+            setPosts(data);
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching posts:', error);
-      // Keep mock data as fallback
+      // Keep existing posts on error
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -140,12 +128,24 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetchPosts();
+    setLoading(true);
+    setPosts([]);
+    setPagination(prev => ({ ...prev, page: 1 }));
+    fetchPosts(true);
     fetchChannels();
   }, [viewMode, selectedChannel]);
 
   const handlePostCreated = () => {
-    fetchPosts();
+    setLoading(true);
+    setPosts([]);
+    setPagination(prev => ({ ...prev, page: 1 }));
+    fetchPosts(true);
+  };
+
+  const handleLoadMore = () => {
+    if (!loadingMore && pagination.hasMore) {
+      fetchPosts(false);
+    }
   };
 
   const createChannel = async (name: string, description: string) => {
@@ -518,11 +518,38 @@ export default function Home() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {getFilteredPosts().map((post) => (
-              <PostCard key={post.id} post={post} getRelativeTime={getRelativeTime} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {getFilteredPosts().map((post) => (
+                <PostCard key={post.id} post={post} getRelativeTime={getRelativeTime} />
+              ))}
+            </div>
+            
+            {posts.length === 0 && !loading && (
+              <div className="text-center py-12 bg-white/20 rounded-xl border-2 border-dashed border-[#FFB823]/30">
+                <h3 className="text-lg font-medium text-black mb-2">No posts found</h3>
+                <p className="text-black/60 mb-4">Be the first to create a post!</p>
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="bg-[#FFB823] px-6 py-3 text-black rounded-xl hover:bg-[#ffad00] transition-colors font-medium shadow-sm"
+                >
+                  Create Post
+                </button>
+              </div>
+            )}
+            
+            {pagination.hasMore && posts.length > 0 && (
+              <div className="flex justify-center mt-8">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  className="bg-[#FFB823] px-8 py-3 text-black rounded-xl hover:bg-[#ffad00] transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loadingMore ? 'Loading...' : `Load More Posts (${pagination.total - posts.length} remaining)`}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
 
