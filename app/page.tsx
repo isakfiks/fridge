@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { FaGlobe } from "react-icons/fa";
 import PostCard from "./components/PostCard";
 import CreatePostModal from "./components/CreatePostModal";
+import CreateChannelModal from "./components/CreateChannelModal";
+import JoinChannelModal from "./components/JoinChannelModal";
 
 interface Post {
   id: number;
@@ -373,11 +375,26 @@ export default function Home() {
             ))}
           </div>
         )}
-      </main>      <CreatePostModal 
+      </main>
+
+      <CreatePostModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)}
         onPostCreated={handlePostCreated}
         selectedChannel={viewMode === 'channel' ? selectedChannel : null}
+      />
+      
+      <CreateChannelModal
+        isOpen={isCreatingChannel}
+        onClose={() => setIsCreatingChannel(false)}
+        onChannelCreated={createChannel}
+      />
+      
+      <JoinChannelModal
+        isOpen={isJoiningChannel}
+        onClose={() => setIsJoiningChannel(false)}
+        channels={channels}
+        onChannelJoined={joinChannel}
       />
     </div>
   );

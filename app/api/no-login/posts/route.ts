@@ -2,17 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { put } from '@vercel/blob'
 
-interface Post {
-  id: number;
-  title: string;
-  description: string;
-  image: string;
-  author: string;
-  hasImage: boolean;
-  reactions: number;
-  createdAt: string;
-}
-
 export async function GET() {
   try {
     const { data: posts, error } = await supabase
