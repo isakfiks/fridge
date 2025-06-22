@@ -7,9 +7,10 @@ interface CreatePostModalProps {
   isOpen: boolean;
   onClose: () => void;
   onPostCreated: () => void;
+  selectedChannel?: string | null;
 }
 
-export default function CreatePostModal({ isOpen, onClose, onPostCreated }: CreatePostModalProps) {
+export default function CreatePostModal({ isOpen, onClose, onPostCreated, selectedChannel }: CreatePostModalProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [author, setAuthor] = useState('')
@@ -30,23 +31,23 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }: Crea
   }
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (isSubmitting) return
-    
     setIsSubmitting(true)
-    
-    try {
-      const formData = new FormData()
-      formData.append('title', title)
-      formData.append('description', description)
-      formData.append('author', author)
-      formData.append('hasImage', image ? 'true' : 'false')
-      
-      if (image) {
-        formData.append('image', image)
-      }
 
-      const response = await fetch('/api/no-login/posts', {
+    const formData = new FormData()
+    formData.append('title', title)
+    formData.append('description', description)
+    formData.append('author', author)
+    formData.append('hasImage', image ? 'true' : 'false')
+    if (image) {
+      formData.append('image', image)
+    }
+
+    try {
+      const endpoint = selectedChannel 
+        ? `/api/no-login/channels/${selectedChannel}/posts`
+        : '/api/no-login/posts';
+        
+      const response = await fetch(endpoint, {
         method: 'POST',
         body: formData,
       })
@@ -61,10 +62,11 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }: Crea
         onClose()
         onPostCreated() // Refresh the posts list
       } else {
-        console.error('Failed to create post')
+        alert('Failed to create post. Please try again.')
       }
     } catch (error) {
       console.error('Error creating post:', error)
+      alert('Failed to create post. Please try again.')
     } finally {
       setIsSubmitting(false)
     }

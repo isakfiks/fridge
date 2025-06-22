@@ -4,25 +4,6 @@ import { useState } from 'react'
 import Image from "next/image"
 import { FaUser, FaHeart, FaStar } from "react-icons/fa"
 
-const getRelativeTime = (dateString: string) => {
-  const now = Date.now();
-  const postTime = new Date(dateString).getTime();
-  const diffInMs = now - postTime;
-  
-  const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
-  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
-  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-  
-  if (diffInMinutes < 60) {
-    if (diffInMinutes <= 1) return 'just now';
-    return `${diffInMinutes} mins ago`;
-  } else if (diffInHours < 24) {
-    return diffInHours === 1 ? '1 hour ago' : `${diffInHours} hours ago`;
-  } else {
-    return diffInDays === 1 ? '1 day ago' : `${diffInDays} days ago`;
-  }
-};
-
 interface Post {
   id: number;
   title: string;
