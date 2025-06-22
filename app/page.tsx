@@ -1,11 +1,14 @@
 'use client'
 
 import { useState, useEffect } from "react";
-import { FaGlobe } from "react-icons/fa";
+import { FaBookOpen, FaCheckCircle, FaGlobe } from "react-icons/fa";
 import PostCard from "./components/PostCard";
 import CreatePostModal from "./components/CreatePostModal";
 import CreateChannelModal from "./components/CreateChannelModal";
 import JoinChannelModal from "./components/JoinChannelModal";
+import { useJoinedChannels } from "./hooks/useJoinedChannels";
+import Link from "next/link";
+import React from 'react'
 
 interface Post {
   id: number;
@@ -25,6 +28,7 @@ interface Channel {
   description: string;
   member_count: number;
   created_at: string;
+  verified: boolean;
 }
 
 const mockPosts: Post[] = [
@@ -70,6 +74,18 @@ const mockPosts: Post[] = [
   },
 ];
 
+const Tooltip = ({ children, text }: { children: React.ReactNode; text: string }) => {
+  return (
+    <div className="relative group">
+      {children}
+      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+        {text}
+        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-black"></div>
+      </div>
+    </div>
+  );
+};
+
 export default function Home() {
   const [posts, setPosts] = useState<Post[]>(mockPosts);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -81,6 +97,8 @@ export default function Home() {
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
   const [isCreatingChannel, setIsCreatingChannel] = useState(false);
   const [isJoiningChannel, setIsJoiningChannel] = useState(false);
+  
+  const { joinedChannels, joinChannel: addToJoined, leaveChannel: removeFromJoined, isJoined } = useJoinedChannels();
 
   const fetchPosts = async () => {
     try {
@@ -143,9 +161,8 @@ export default function Home() {
       if (res.ok) {
         const newChannel = await res.json();
         setChannels(prev => [...prev, newChannel]);
-        setSelectedChannel(newChannel.id);
-        setViewMode('channel');
-        setIsCreatingChannel(false);
+        addToJoined(newChannel.id);
+        window.location.href = `/channel/${newChannel.id}`;
         return true;
       }
     } catch (error) {
@@ -155,20 +172,37 @@ export default function Home() {
   };
 
   const joinChannel = async (channelId: string) => {
+    setChannels(prev => prev.map(channel => 
+      channel.id === channelId 
+        ? { ...channel, member_count: channel.member_count + 1 }
+        : channel
+    ));
+    addToJoined(channelId);
+
     try {
       const res = await fetch(`/api/no-login/channels/${channelId}/join`, {
         method: 'POST',
       });
       
       if (res.ok) {
-        setSelectedChannel(channelId);
-        setViewMode('channel');
-        setIsJoiningChannel(false);
-        fetchPosts();
+        window.location.href = `/channel/${channelId}`;
         return true;
+      } else {
+        setChannels(prev => prev.map(channel => 
+          channel.id === channelId 
+            ? { ...channel, member_count: channel.member_count - 1 }
+            : channel
+        ));
+        removeFromJoined(channelId);
       }
     } catch (error) {
       console.error('Error joining channel:', error);
+      setChannels(prev => prev.map(channel => 
+        channel.id === channelId 
+          ? { ...channel, member_count: channel.member_count - 1 }
+          : channel
+      ));
+      removeFromJoined(channelId);
     }
     return false;
   };
@@ -220,9 +254,9 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
-              <h1 className="text-black text-2xl font-semibold">Fridge</h1>
+              <Link href="/"><h1 className="text-black text-2xl font-semibold">Fridge</h1></Link>
               <div className="w-px h-6 bg-black/20"></div>
-              <FaGlobe className="text-black text-xl"></FaGlobe>
+              {viewMode === 'global' && <FaGlobe className="text-black text-xl" /> || <FaBookOpen className="text-black text-xl" />}
               <h1 className="text-black text-xl font-bold">
                 {viewMode === 'global' ? 'Global' : selectedChannel ? channels.find(c => c.id === selectedChannel)?.name || 'Channel' : 'Channels'}
               </h1>
@@ -368,6 +402,121 @@ export default function Home() {
           <div className="flex justify-center items-center h-64">
             <div className="text-black text-lg">Loading posts...</div>
           </div>
+        ) : viewMode === 'channel' && !selectedChannel ? (
+          <div className="space-y-8">
+            {joinedChannels.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-semibold text-black">My Channels</h2>
+                  <span className="text-sm text-black/60">{joinedChannels.length} joined</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {channels.filter(channel => isJoined(channel.id)).map((channel) => (
+                    <div
+                      key={channel.id}
+                      onClick={() => window.location.href = `/channel/${channel.id}`}
+                      className="bg-[#FFB823] rounded-xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer  border-2 border-green-400/20"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <h3 className="flex items-center text-lg font-semibold text-black">
+                          {channel.name} 
+                          {channel.verified === true && (
+                            <Tooltip text="Verified Channel">
+                              <FaCheckCircle className="ml-2 text-green-500" />
+                            </Tooltip>
+                          )}
+                        </h3>
+
+                        <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                          Joined
+                        </span>
+                      </div>
+                      <p className="text-black/80 text-sm mb-3 line-clamp-2">{channel.description}</p>
+                      <div className="flex items-center justify-between text-xs text-black/60">
+                        <span>{channel.member_count} members</span>
+                        <span>{new Date(channel.created_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-black">
+                  {joinedChannels.length > 0 ? 'Discover More Channels' : 'Available Channels'}
+                </h2>
+                <button
+                  onClick={() => setIsCreatingChannel(true)}
+                  className="bg-[#FFB823] px-4 py-2 text-black rounded-lg hover:bg-[#ffad00] transition-colors font-medium text-sm"
+                >
+                  Create Channel
+                </button>
+              </div>
+              
+              {channels.filter(channel => !isJoined(channel.id)).length === 0 ? (
+                <div className="text-center py-12 bg-white/20 rounded-xl border-2 border-dashed border-[#FFB823]/30">
+                  <h3 className="text-lg font-medium text-black mb-2">
+                    {joinedChannels.length > 0 ? 'You\'ve joined all channels!' : 'No channels yet'}
+                  </h3>
+                  <p className="text-black/60 mb-4">
+                    {joinedChannels.length > 0 
+                      ? 'Create a new channel to start fresh discussions' 
+                      : 'Be the first to create a channel and start the conversation'
+                    }
+                  </p>
+                  <button
+                    onClick={() => setIsCreatingChannel(true)}
+                    className="bg-[#FFB823] px-6 py-3 text-black rounded-xl hover:bg-[#ffad00] transition-colors font-medium shadow-sm"
+                  >
+                    Create Channel
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {channels.filter(channel => !isJoined(channel.id)).map((channel) => (
+                    <div
+                      key={channel.id}
+                      className="bg-white rounded-xl p-5 shadow-md hover:shadow-lg transition-all border border-[#FFB823]/20 hover:border-[#FFB823]/40"
+                    >
+                      <h3 className="text-lg font-semibold text-black mb-2 flex items-center">
+                        {channel.name} 
+                        {channel.verified === true && (
+                          <Tooltip text="Verified Channel">
+                            <FaCheckCircle className="ml-2 text-green-500" />
+                          </Tooltip>
+                        )}
+                      </h3>
+                      <p className="text-black/70 text-sm mb-4 line-clamp-2">{channel.description}</p>
+                      <div className="flex items-center justify-between text-xs text-black/60 mb-4">
+                        <span>{channel.member_count} members</span>
+                        <span>{new Date(channel.created_at).toLocaleDateString()}</span>
+                      </div>
+                      
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => window.location.href = `/channel/${channel.id}`}
+                          className="flex-1 bg-[#FFB823]/10 px-3 py-2 text-black rounded-lg hover:bg-[#FFB823]/20 transition-colors font-medium text-sm"
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            joinChannel(channel.id);
+                          }}
+                          className="bg-[#FFB823] px-4 py-2 text-black rounded-lg hover:bg-[#ffad00] transition-colors font-medium text-sm"
+                        >
+                          Join
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {getFilteredPosts().map((post) => (
@@ -393,7 +542,7 @@ export default function Home() {
       <JoinChannelModal
         isOpen={isJoiningChannel}
         onClose={() => setIsJoiningChannel(false)}
-        channels={channels}
+        channels={channels.filter(channel => !joinedChannels.includes(channel.id))}
         onChannelJoined={joinChannel}
       />
     </div>
