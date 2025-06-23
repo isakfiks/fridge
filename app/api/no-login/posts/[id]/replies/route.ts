@@ -43,10 +43,26 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid post ID' }, { status: 400 })
     }
 
-    const { content, author } = await request.json()
+    const { content, author, parent_id } = await request.json()
 
     if (!content || !author) {
       return NextResponse.json({ error: 'Content and author are required' }, { status: 400 })
+    }
+
+    if (parent_id) {
+      const { data: parentReply, error: parentError } = await supabase
+        .from('replies')
+        .select('id, post_id')
+        .eq('id', parent_id)
+        .single()
+
+      if (parentError || !parentReply) {
+        return NextResponse.json({ error: 'Invalid parent reply' }, { status: 400 })
+      }
+
+      if (parentReply.post_id !== postId) {
+        return NextResponse.json({ error: 'Parent reply must belong to the same post' }, { status: 400 })
+      }
     }
 
     const { data: newReply, error } = await supabase
@@ -56,6 +72,7 @@ export async function POST(
           post_id: postId,
           content,
           author,
+          parent_id: parent_id || null,
         }
       ])
       .select()

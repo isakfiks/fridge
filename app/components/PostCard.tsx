@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Image from "next/image"
-import { FaUser, FaHeart, FaStar, FaPoll, FaCheck } from "react-icons/fa"
-
+import { FaUser, FaHeart, FaStar, FaPoll, FaCheck, FaFlag, FaReply } from "react-icons/fa"
+import ReportPostModal from "@/app/components/ReportPostModal"
 interface Post {
   id: number;
   title: string;
@@ -22,6 +22,8 @@ interface Reply {
   content: string;
   author: string;
   created_at: string;
+  parent_id: number | null;
+  replies?: Reply[];
 }
 
 interface Poll {
@@ -38,6 +40,49 @@ interface PostCardProps {
   getRelativeTime: (dateString: string) => string;
 }
 
+function ReplyItem({ reply, getRelativeTime, onReply, depth = 0 }: any) {
+  const maxDepth = 3;
+  const indentClass = depth > 0 ? `ml-${Math.min(depth * 4, 12)}` : '';
+  
+  return (
+    <div className={`${indentClass} ${depth > 0 ? 'border-l-2 border-white/20 pl-3' : ''}`}>
+      <div className="bg-white/10 rounded-lg p-3 mb-2">
+        <div className='flex items-center justify-between mb-2'>
+          <div className='flex items-center'>
+            <FaUser className='text-black/70 mr-2' />
+            <p className='text-black font-medium'>{reply.author}</p>
+            <span className="text-black/50 text-xs ml-2">{getRelativeTime(reply.created_at)}</span>
+          </div>
+          {depth < maxDepth && (
+            <button
+              onClick={() => onReply(reply.id, reply.author)}
+              className="text-black/60 hover:text-black text-xs flex items-center gap-1 transition-colors"
+            >
+              <FaReply size={10} />
+              Reply
+            </button>
+          )}
+        </div>
+        <p className='text-black/80 text-sm'>{reply.content}</p>
+      </div>
+      
+      {reply.replies && reply.replies.length > 0 && (
+        <div className="space-y-2">
+          {reply.replies.map((childReply) => (
+            <ReplyItem
+              key={childReply.id}
+              reply={childReply}
+              getRelativeTime={getRelativeTime}
+              onReply={onReply}
+              depth={depth + 1}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PostCard({ post, getRelativeTime }: PostCardProps) {
   const [reactions, setReactions] = useState(post.reactions)
   const [isReacting, setIsReacting] = useState(false)
@@ -51,6 +96,8 @@ export default function PostCard({ post, getRelativeTime }: PostCardProps) {
   const [poll, setPoll] = useState<Poll | null>(null)
   const [hasVoted, setHasVoted] = useState(false)
   const [isVoting, setIsVoting] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{ id: number; author: string } | null>(null);
 
   useEffect(() => {
     if (post.hasPoll) {
@@ -58,8 +105,8 @@ export default function PostCard({ post, getRelativeTime }: PostCardProps) {
     }
   }, [post.id, post.hasPoll])
 
-  const fetchReplies = async () => {
-    if (repliesLoaded) return
+  const fetchReplies = async (force = false) => {
+    if (repliesLoaded && !force) return
     
     setIsLoadingReplies(true)
     try {
@@ -110,14 +157,17 @@ export default function PostCard({ post, getRelativeTime }: PostCardProps) {
         },
         body: JSON.stringify({
           content: replyContent,
-          author: 'Anonymous'
+          author: 'Anonymous',
+          parent_id: replyingTo?.id || null
         })
       })
 
       if (response.ok) {
         const newReply = await response.json()
-        setReplies([...replies, newReply])
+        // Refetch all replies to maintain proper tree structure
+        await fetchReplies(true)
         setReplyContent('')
+        setReplyingTo(null)
       }
     } catch (error) {
       console.error('Error submitting reply:', error)
@@ -186,6 +236,50 @@ export default function PostCard({ post, getRelativeTime }: PostCardProps) {
     return total > 0 ? Math.round((votes / total) * 100) : 0
   }
 
+  const organizeReplies = (replies: Reply[]): Reply[] => {
+    const replyMap = new Map<number, Reply>();
+    const rootReplies: Reply[] = [];
+
+    // First pass: create map of all replies
+    replies.forEach(reply => {
+      replyMap.set(reply.id, { ...reply, replies: [] });
+    });
+
+    // Second pass: organize into tree structure
+    replies.forEach(reply => {
+      const replyWithChildren = replyMap.get(reply.id)!;
+      
+      if (reply.parent_id === null) {
+        rootReplies.push(replyWithChildren);
+      } else {
+        const parent = replyMap.get(reply.parent_id);
+        if (parent) {
+          parent.replies = parent.replies || [];
+          parent.replies.push(replyWithChildren);
+        } else {
+          // If parent not found, treat as root reply
+          rootReplies.push(replyWithChildren);
+        }
+      }
+    });
+
+    return rootReplies;
+  };
+
+  const handleReplyTo = (parentId: number, parentAuthor: string) => {
+    setReplyingTo({ id: parentId, author: parentAuthor });
+    // Focus the input after a short delay to ensure it's rendered
+    setTimeout(() => {
+      const input = document.querySelector('input[placeholder*="reply"]') as HTMLInputElement;
+      if (input) input.focus();
+    }, 100);
+  };
+
+  const cancelReply = () => {
+    setReplyingTo(null);
+    setReplyContent('');
+  };
+
   return (
     <div className="bg-[#FFB823] rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow w-full">
       <div className="mb-4">
@@ -193,6 +287,11 @@ export default function PostCard({ post, getRelativeTime }: PostCardProps) {
           <h3 className="text-lg font-semibold text-black line-clamp-2">
             {post.title}
           </h3>
+          
+          <button onClick={() => setIsModalOpen(true)} className='flex text-center items-center'>
+          <FaFlag className='text-red-600 mr-2'></FaFlag>
+          <p className='text-red-600 text-sm'>Report</p>
+          </button>
           {reactions >= 50 && (
             <div className="bg-white p-2 rounded-lg flex-shrink-0 ml-2">
               <FaStar className="text-[#FFB823]" />
@@ -217,32 +316,32 @@ export default function PostCard({ post, getRelativeTime }: PostCardProps) {
       )}
 
       {post.hasPoll && poll && (
-        <div className="mb-4 bg-white/10 rounded-lg p-4">
+        <div className="mb-4 bg-white/90 rounded-lg p-4 border border-black/20">
           <div className="flex items-center mb-3">
-            <FaPoll className="text-black/70 mr-2" />
-            <h4 className="font-medium text-black">{poll.question}</h4>
+            <FaPoll className="text-black mr-2" />
+            <h4 className="font-semibold text-black">{poll.question}</h4>
           </div>
           
-          <div className="space-y-2">
+          <div className="space-y-3">
             {poll.options.map((option, index) => (
               <div key={index} className="relative">
                 <button
                   onClick={() => handleVote(index)}
                   disabled={hasVoted || isVoting}
-                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                  className={`w-full text-left p-3 rounded-lg border-2 transition-all duration-200 ${
                     hasVoted 
-                      ? 'bg-white/5 cursor-default' 
-                      : 'bg-white/20 hover:bg-white/30 border-white/20'
+                      ? 'bg-gray-50 border-gray-200 cursor-default shadow-inner' 
+                      : 'bg-white border-gray-300 hover:border-[#FFB823] hover:shadow-md active:scale-[0.98]'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-black font-medium">{option}</span>
+                    <span className="text-gray-900 font-medium">{option}</span>
                     {hasVoted && (
                       <div className="flex items-center space-x-2">
-                        <span className="text-black/70 text-sm">
+                        <span className="text-gray-700 font-semibold">
                           {getVotePercentage(poll.voteCounts[index], poll.totalVotes)}%
                         </span>
-                        <span className="text-black/50 text-sm">
+                        <span className="text-gray-500 text-sm">
                           ({poll.voteCounts[index]})
                         </span>
                       </div>
@@ -250,9 +349,9 @@ export default function PostCard({ post, getRelativeTime }: PostCardProps) {
                   </div>
                   
                   {hasVoted && (
-                    <div className="mt-2 bg-white/20 rounded-full h-2 overflow-hidden">
+                    <div className="mt-3 bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
                       <div 
-                        className="bg-[#FFB823] h-full transition-all duration-300"
+                        className="bg-gradient-to-r from-[#FFB823] to-[#FF9500] h-full transition-all duration-500 shadow-sm"
                         style={{ 
                           width: `${getVotePercentage(poll.voteCounts[index], poll.totalVotes)}%` 
                         }}
@@ -265,9 +364,9 @@ export default function PostCard({ post, getRelativeTime }: PostCardProps) {
           </div>
           
           {hasVoted && (
-            <div className="mt-3 text-center">
-              <p className="text-black/60 text-sm">
-                <FaCheck className="inline mr-1" />
+            <div className="mt-4 text-center bg-gray-100 rounded-lg p-2">
+              <p className="text-gray-700 text-sm font-medium">
+                <FaCheck className="inline mr-1 text-green-600" />
                 Total votes: {poll.totalVotes}
               </p>
             </div>
@@ -309,12 +408,26 @@ export default function PostCard({ post, getRelativeTime }: PostCardProps) {
         {showReplies && (
           <>
             <div className="mb-4">
+              {replyingTo && (
+                <div className="mb-3 p-2 bg-white/20 rounded-lg flex items-center justify-between">
+                  <span className="text-black/70 text-sm">
+                    Replying to <strong>{replyingTo.author}</strong>
+                  </span>
+                  <button
+                    onClick={cancelReply}
+                    className="text-black/50 hover:text-black text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+              
               <form onSubmit={handleSubmitReply} className="flex items-center gap-2 flex-wrap">
                 <input 
                   type="text"
                   value={replyContent}
                   onChange={(e) => setReplyContent(e.target.value)}
-                  placeholder="Write a reply..."
+                  placeholder={replyingTo ? `Reply to ${replyingTo.author}...` : "Write a reply..."}
                   className="flex-1 rounded-full px-4 py-2 bg-white/50 text-black placeholder:text-black/50 focus:outline-none focus:ring-2 focus:ring-black/20 min-w-0"
                   disabled={isSubmittingReply}
                 />
@@ -329,15 +442,13 @@ export default function PostCard({ post, getRelativeTime }: PostCardProps) {
             </div>
 
             <div className="space-y-3">
-              {replies.map((reply) => (
-                <div key={reply.id} className="bg-white/10 rounded-lg p-3">
-                  <div className='flex items-center mb-2'>
-                    <FaUser className='text-black/70 mr-2' />
-                    <p className='text-black font-medium'>{reply.author}</p>
-                    <span className="text-black/50 text-xs ml-2">{getRelativeTime(reply.created_at)}</span>
-                  </div>
-                  <p className='text-black/80 text-sm'>{reply.content}</p>
-                </div>
+              {organizeReplies(replies).map((reply) => (
+                <ReplyItem
+                  key={reply.id}
+                  reply={reply}
+                  getRelativeTime={getRelativeTime}
+                  onReply={handleReplyTo}
+                />
               ))}
               {replies.length === 0 && repliesLoaded && (
                 <p className="text-black/50 text-sm italic">No replies yet. Be the first to reply!</p>
@@ -346,6 +457,14 @@ export default function PostCard({ post, getRelativeTime }: PostCardProps) {
           </>
         )}
       </div>
+      <ReportPostModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)}
+        postId={post.id}
+        postTitle={post.title}
+        postAuthor={post.author}
+      />
     </div>
   )
 }
+
