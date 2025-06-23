@@ -45,46 +45,85 @@ export async function POST(request: NextRequest) {
     const description = formData.get('description') as string
     const author = formData.get('author') as string
     const hasImage = formData.get('hasImage') === 'true'
-    const imageFile = formData.get('image') as File | null
+    const hasPoll = formData.get('hasPoll') === 'true'
 
-    let imagePath = ''
-    if (hasImage && imageFile) {
-      try {
-        // Upload image
-        const blob = await put(`posts/${Date.now()}-${imageFile.name}`, imageFile, {
-          access: 'public',
-        })
-        imagePath = blob.url
-      } catch (uploadError) {
-        console.error('Error uploading image:', uploadError)
-        // Continue without image as a fallback
-        imagePath = ''
+    console.log('Creating post with hasPoll:', hasPoll)
+
+    let imageUrl = ''
+    if (hasImage) {
+      const image = formData.get('image') as File
+      if (image) {
+        const fileExt = image.name.split('.').pop()
+        const fileName = `${Date.now()}.${fileExt}`
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('posts')
+          .upload(fileName, image)
+
+        if (uploadError) {
+          console.error('Error uploading image:', uploadError)
+          return NextResponse.json({ error: 'Failed to upload image' }, { status: 500 })
+        }
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from('posts').getPublicUrl(fileName)
+
+        imageUrl = publicUrl
       }
     }
 
-    const { data: newPost, error } = await supabase
+    const postData = {
+      title,
+      description,
+      author,
+      hasImage,
+      hasPoll,
+      image: imageUrl,
+      reactions: 0,
+    }
+
+    console.log('Post data:', postData) // Dbg
+
+    const { data: post, error: postError } = await supabase
       .from('posts')
-      .insert([
-        {
-          title,
-          description,
-          image: imagePath,
-          author,
-          hasImage: hasImage && imagePath !== '',
-          reactions: 0,
-        },
-      ])
+      .insert(postData)
       .select()
       .single()
 
-    if (error) {
-      console.error('Error creating post:', error)
+    if (postError) {
+      console.error('Error creating post:', postError)
       return NextResponse.json({ error: 'Failed to create post' }, { status: 500 })
     }
 
-    return NextResponse.json(newPost, { status: 201 })
+    if (hasPoll) {
+      const pollQuestion = formData.get('pollQuestion') as string
+      const pollOptionsString = formData.get('pollOptions') as string
+
+      if (pollQuestion && pollOptionsString) {
+        try {
+          const pollOptions = JSON.parse(pollOptionsString)
+
+          const { error: pollError } = await supabase
+            .from('polls')
+            .insert({
+              post_id: post.id,
+              question: pollQuestion,
+              options: pollOptions,
+            })
+
+          if (pollError) {
+            console.error('Error creating poll:', pollError)
+          }
+        } catch (parseError) {
+          console.error('Error parsing poll options:', parseError)
+        }
+      }
+    }
+
+    return NextResponse.json(post)
   } catch (error) {
-    console.error('Error creating post:', error)
-    return NextResponse.json({ error: 'Failed to create post' }, { status: 500 })
+    console.error('Unexpected error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
