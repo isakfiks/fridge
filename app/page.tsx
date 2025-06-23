@@ -43,6 +43,41 @@ const Tooltip = ({ children, text }: { children: React.ReactNode; text: string }
   );
 };
 
+const PostSkeleton = () => (
+  <div className="bg-white rounded-xl shadow-lg overflow-hidden animate-pulse">
+    <div className="h-48 bg-gray-200"></div>
+    <div className="p-4">
+      <div className="h-4 bg-gray-200 rounded mb-2"></div>
+      <div className="h-3 bg-gray-200 rounded w-3/4 mb-3"></div>
+      <div className="flex items-center justify-between">
+        <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+        <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+      </div>
+    </div>
+  </div>
+);
+
+const ChannelSkeleton = () => (
+  <div className="bg-white rounded-xl p-5 shadow-md animate-pulse">
+    <div className="flex items-start justify-between mb-3">
+      <div className="h-5 bg-gray-200 rounded w-2/3"></div>
+      <div className="h-5 bg-gray-200 rounded w-1/4"></div>
+    </div>
+    <div className="h-3 bg-gray-200 rounded mb-2"></div>
+    <div className="h-3 bg-gray-200 rounded w-3/4 mb-4"></div>
+    <div className="flex items-center justify-between">
+      <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+      <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+    </div>
+  </div>
+);
+
+const LoadMoreSkeleton = () => (
+  <div className="flex justify-center mt-8">
+    <div className="bg-gray-200 px-8 py-3 rounded-xl animate-pulse h-12 w-64"></div>
+  </div>
+);
+
 export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -399,8 +434,10 @@ export default function Home() {
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="text-black text-lg">Loading posts...</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <PostSkeleton key={index} />
+            ))}
           </div>
         ) : viewMode === 'channel' && !selectedChannel ? (
           <div className="space-y-8">
@@ -455,7 +492,13 @@ export default function Home() {
                 </button>
               </div>
               
-              {channels.filter(channel => !isJoined(channel.id)).length === 0 ? (
+              {channels.length === 0 && loading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <ChannelSkeleton key={index} />
+                  ))}
+                </div>
+              ) : channels.filter(channel => !isJoined(channel.id)).length === 0 ? (
                 <div className="text-center py-12 bg-white/20 rounded-xl border-2 border-dashed border-[#FFB823]/30">
                   <h3 className="text-lg font-medium text-black mb-2">
                     {joinedChannels.length > 0 ? 'You\'ve joined all channels!' : 'No channels yet'}
@@ -538,14 +581,18 @@ export default function Home() {
               </div>
             )}
             
-            {pagination.hasMore && posts.length > 0 && (
+            {loadingMore && (
+              <LoadMoreSkeleton />
+            )}
+            
+            {pagination.hasMore && posts.length > 0 && !loadingMore && (
               <div className="flex justify-center mt-8">
                 <button
                   onClick={handleLoadMore}
                   disabled={loadingMore}
                   className="bg-[#FFB823] px-8 py-3 text-black rounded-xl hover:bg-[#ffad00] transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loadingMore ? 'Loading...' : `Load More Posts (${pagination.total - posts.length} remaining)`}
+                  Load More Posts ({pagination.total - posts.length} remaining)
                 </button>
               </div>
             )}

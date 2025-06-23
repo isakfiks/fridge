@@ -28,6 +28,49 @@ interface Channel {
   verified: boolean;
 }
 
+const PostSkeleton = () => (
+  <div className="bg-white rounded-xl shadow-lg overflow-hidden animate-pulse">
+    <div className="h-48 bg-gray-200"></div>
+    <div className="p-4">
+      <div className="h-4 bg-gray-200 rounded mb-2"></div>
+      <div className="h-3 bg-gray-200 rounded w-3/4 mb-3"></div>
+      <div className="flex items-center justify-between">
+        <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+        <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+      </div>
+    </div>
+  </div>
+);
+
+const ChannelHeaderSkeleton = () => (
+  <div className="animate-pulse">
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center space-x-4">
+        <div className="w-8 h-8 bg-gray-200 rounded-lg"></div>
+        <div>
+          <div className="h-6 bg-gray-200 rounded w-48 mb-1"></div>
+          <div className="h-4 bg-gray-200 rounded w-64"></div>
+        </div>
+      </div>
+      <div className="flex items-center space-x-4">
+        <div className="h-4 bg-gray-200 rounded w-24"></div>
+        <div className="h-8 bg-gray-200 rounded w-28"></div>
+        <div className="h-10 bg-gray-200 rounded w-24"></div>
+      </div>
+    </div>
+    <div className="flex items-center justify-end space-x-4">
+      <div className="h-8 bg-gray-200 rounded w-32"></div>
+      <div className="h-8 bg-gray-200 rounded w-32"></div>
+    </div>
+  </div>
+);
+
+const LoadMoreSkeleton = () => (
+  <div className="flex justify-center mt-8">
+    <div className="bg-gray-200 px-8 py-3 rounded-xl animate-pulse h-12 w-64"></div>
+  </div>
+);
+
 export default function ChannelPage() {
   const params = useParams();
   const router = useRouter();
@@ -39,6 +82,7 @@ export default function ChannelPage() {
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<'reactions' | 'date'>('reactions');
   const [dateFilter, setDateFilter] = useState<'24h' | '3d' | '7d'>('7d');
+  const [loadingMore, setLoadingMore] = useState(false);
   
   const { joinChannel: addToJoined, leaveChannel: removeFromJoined, isJoined } = useJoinedChannels();
 
@@ -64,7 +108,11 @@ export default function ChannelPage() {
     }
   };
 
-  const fetchPosts = async () => {
+  const fetchPosts = async (loadMore = false) => {
+    if (loadMore) {
+      setLoadingMore(true);
+    }
+    
     try {
       const res = await fetch(`/api/no-login/channels/${channelId}/posts`, {
         cache: 'no-store'
@@ -78,6 +126,7 @@ export default function ChannelPage() {
       console.error('Error fetching posts:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -175,10 +224,29 @@ export default function ChannelPage() {
     }
   };
 
+  if (!channel && loading) {
+    return (
+      <div className="bg-[#FFF1CA] min-h-screen font-[family-name:var(--font-geist-sans)]">
+        <header className="sticky top-0 z-10 bg-[#FFF1CA] border-b border-[#FFB823]/20 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto px-6 py-6">
+            <ChannelHeaderSkeleton />
+          </div>
+        </header>
+        <main className="max-w-7xl mx-auto px-6 py-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <PostSkeleton key={index} />
+            ))}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   if (!channel) {
     return (
       <div className="bg-[#FFF1CA] min-h-screen flex items-center justify-center">
-        <div className="text-black text-lg">Loading channel...</div>
+        <div className="text-black text-lg">Channel not found</div>
       </div>
     );
   }
@@ -285,8 +353,10 @@ export default function ChannelPage() {
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="text-black text-lg">Loading posts...</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <PostSkeleton key={index} />
+            ))}
           </div>
         ) : getFilteredPosts().length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center">
@@ -300,11 +370,17 @@ export default function ChannelPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {getFilteredPosts().map((post) => (
-              <PostCard key={post.id} post={post} getRelativeTime={getRelativeTime} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {getFilteredPosts().map((post) => (
+                <PostCard key={post.id} post={post} getRelativeTime={getRelativeTime} />
+              ))}
+            </div>
+            
+            {loadingMore && (
+              <LoadMoreSkeleton />
+            )}
+          </>
         )}
       </main>
 
