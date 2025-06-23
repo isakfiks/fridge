@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { FaTimes, FaImage } from 'react-icons/fa'
+import { FaTimes, FaImage, FaPoll, FaPlus, FaMinus } from 'react-icons/fa'
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -17,6 +17,9 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, select
   const [image, setImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isPollEnabled, setIsPollEnabled] = useState(false)
+  const [pollQuestion, setPollQuestion] = useState('')
+  const [pollOptions, setPollOptions] = useState(['', ''])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -29,6 +32,24 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, select
       reader.readAsDataURL(file)
     }
   }
+  const addPollOption = () => {
+    if (pollOptions.length < 6) {
+      setPollOptions([...pollOptions, ''])
+    }
+  }
+
+  const removePollOption = (index: number) => {
+    if (pollOptions.length > 2) {
+      setPollOptions(pollOptions.filter((_, i) => i !== index))
+    }
+  }
+
+  const updatePollOption = (index: number, value: string) => {
+    const newOptions = [...pollOptions]
+    newOptions[index] = value
+    setPollOptions(newOptions)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -40,6 +61,13 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, select
     formData.append('hasImage', image ? 'true' : 'false')
     if (image) {
       formData.append('image', image)
+    }
+
+    // Add poll data
+    formData.append('hasPoll', isPollEnabled ? 'true' : 'false')
+    if (isPollEnabled) {
+      formData.append('pollQuestion', pollQuestion)
+      formData.append('pollOptions', JSON.stringify(pollOptions.filter(option => option.trim() !== '')))
     }
 
     try {
@@ -59,6 +87,9 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, select
         setAuthor('')
         setImage(null)
         setImagePreview(null)
+        setIsPollEnabled(false)
+        setPollQuestion('')
+        setPollOptions(['', ''])
         onClose()
         onPostCreated() // Refresh the posts list
       } else {
@@ -78,6 +109,9 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, select
     setAuthor('')
     setImage(null)
     setImagePreview(null)
+    setIsPollEnabled(false)
+    setPollQuestion('')
+    setPollOptions(['', ''])
     onClose()
   }
 
@@ -140,6 +174,82 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, select
               required
               placeholder="Who wrote this post?"
             />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-black">
+                Poll
+              </label>
+              <button
+                type="button"
+                onClick={() => setIsPollEnabled(!isPollEnabled)}
+                className={`flex items-center px-3 py-1 rounded-lg transition-colors ${
+                  isPollEnabled 
+                    ? 'bg-[#FFB823] text-black' 
+                    : 'bg-gray-200 text-gray-600'
+                }`}
+              >
+                <FaPoll className="mr-2" />
+                {isPollEnabled ? 'Enabled' : 'Enable Poll'}
+              </button>
+            </div>
+
+            {isPollEnabled && (
+              <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <label htmlFor="pollQuestion" className="block text-sm font-medium text-black mb-1">
+                    Poll Question
+                  </label>
+                  <input
+                    type="text"
+                    id="pollQuestion"
+                    value={pollQuestion}
+                    onChange={(e) => setPollQuestion(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFB823] text-black bg-white"
+                    required={isPollEnabled}
+                    placeholder="What would you like to ask?"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-black mb-2">
+                    Poll Options
+                  </label>
+                  {pollOptions.map((option, index) => (
+                    <div key={index} className="flex items-center space-x-2 mb-2">
+                      <input
+                        type="text"
+                        value={option}
+                        onChange={(e) => updatePollOption(index, e.target.value)}
+                        className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFB823] text-black bg-white"
+                        placeholder={`Option ${index + 1}`}
+                        required={isPollEnabled}
+                      />
+                      {pollOptions.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => removePollOption(index)}
+                          className="text-red-500 hover:text-red-700 p-1"
+                        >
+                          <FaMinus />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {pollOptions.length < 6 && (
+                    <button
+                      type="button"
+                      onClick={addPollOption}
+                      className="flex items-center text-sm text-[#FFB823] hover:text-[#ffad00] font-medium"
+                    >
+                      <FaPlus className="mr-1" />
+                      Add Option
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <div>

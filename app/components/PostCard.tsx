@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from "next/image"
-import { FaUser, FaHeart, FaStar } from "react-icons/fa"
+import { FaUser, FaHeart, FaStar, FaPoll, FaCheck } from "react-icons/fa"
 
 interface Post {
   id: number;
@@ -11,6 +11,7 @@ interface Post {
   image: string;
   author: string;
   hasImage: boolean;
+  hasPoll: boolean;
   reactions: number;
   created_at: string;
 }
@@ -21,6 +22,15 @@ interface Reply {
   content: string;
   author: string;
   created_at: string;
+}
+
+interface Poll {
+  id: number;
+  post_id: number;
+  question: string;
+  options: string[];
+  voteCounts: number[];
+  totalVotes: number;
 }
 
 interface PostCardProps {
@@ -38,6 +48,15 @@ export default function PostCard({ post, getRelativeTime }: PostCardProps) {
   const [showReplies, setShowReplies] = useState(false)
   const [repliesLoaded, setRepliesLoaded] = useState(false)
   const [isLoadingReplies, setIsLoadingReplies] = useState(false)
+  const [poll, setPoll] = useState<Poll | null>(null)
+  const [hasVoted, setHasVoted] = useState(false)
+  const [isVoting, setIsVoting] = useState(false)
+
+  useEffect(() => {
+    if (post.hasPoll) {
+      fetchPoll()
+    }
+  }, [post.id, post.hasPoll])
 
   const fetchReplies = async () => {
     if (repliesLoaded) return
@@ -54,6 +73,18 @@ export default function PostCard({ post, getRelativeTime }: PostCardProps) {
       console.error('Error fetching replies:', error)
     } finally {
       setIsLoadingReplies(false)
+    }
+  }
+
+  const fetchPoll = async () => {
+    try {
+      const response = await fetch(`/api/no-login/posts/${post.id}/polls`)
+      if (response.ok) {
+        const pollData = await response.json()
+        setPoll(pollData)
+      }
+    } catch (error) {
+      console.error('Error fetching poll:', error)
     }
   }
 
@@ -121,6 +152,40 @@ export default function PostCard({ post, getRelativeTime }: PostCardProps) {
       setIsReacting(false)
     }
   }
+
+  const handleVote = async (optionIndex: number) => {
+    if (hasVoted || isVoting) return
+
+    setIsVoting(true)
+    try {
+      const response = await fetch(`/api/no-login/posts/${post.id}/polls`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ optionIndex })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setPoll(prev => prev ? {
+          ...prev,
+          voteCounts: data.voteCounts,
+          totalVotes: data.totalVotes
+        } : null)
+        setHasVoted(true)
+      }
+    } catch (error) {
+      console.error('Error voting:', error)
+    } finally {
+      setIsVoting(false)
+    }
+  }
+
+  const getVotePercentage = (votes: number, total: number) => {
+    return total > 0 ? Math.round((votes / total) * 100) : 0
+  }
+
   return (
     <div className="bg-[#FFB823] rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow w-full">
       <div className="mb-4">
@@ -148,6 +213,65 @@ export default function PostCard({ post, getRelativeTime }: PostCardProps) {
             src={post.image} 
             alt={post.title}
           />
+        </div>
+      )}
+
+      {post.hasPoll && poll && (
+        <div className="mb-4 bg-white/10 rounded-lg p-4">
+          <div className="flex items-center mb-3">
+            <FaPoll className="text-black/70 mr-2" />
+            <h4 className="font-medium text-black">{poll.question}</h4>
+          </div>
+          
+          <div className="space-y-2">
+            {poll.options.map((option, index) => (
+              <div key={index} className="relative">
+                <button
+                  onClick={() => handleVote(index)}
+                  disabled={hasVoted || isVoting}
+                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                    hasVoted 
+                      ? 'bg-white/5 cursor-default' 
+                      : 'bg-white/20 hover:bg-white/30 border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-black font-medium">{option}</span>
+                    {hasVoted && (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-black/70 text-sm">
+                          {getVotePercentage(poll.voteCounts[index], poll.totalVotes)}%
+                        </span>
+                        <span className="text-black/50 text-sm">
+                          ({poll.voteCounts[index]})
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {hasVoted && (
+                    <div className="mt-2 bg-white/20 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className="bg-[#FFB823] h-full transition-all duration-300"
+                        style={{ 
+                          width: `${getVotePercentage(poll.voteCounts[index], poll.totalVotes)}%` 
+                        }}
+                      />
+                    </div>
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
+          
+          {hasVoted && (
+            <div className="mt-3 text-center">
+              <p className="text-black/60 text-sm">
+                <FaCheck className="inline mr-1" />
+                Total votes: {poll.totalVotes}
+              </p>
+            </div>
+          )}
         </div>
       )}      <div className="flex items-center justify-between text-sm">
         <div className="flex items-center text-black/70">
