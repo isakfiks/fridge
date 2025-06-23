@@ -17,6 +17,7 @@ interface Post {
   image: string;
   author: string;
   hasImage: boolean;
+  hasPoll: boolean;
   reactions: number;
   created_at: string;
   channel_id?: string;
