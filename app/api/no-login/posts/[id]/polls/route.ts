@@ -34,7 +34,7 @@ export async function GET(
     }
 
     // Count votes for each option
-    const voteCounts = poll.options.map((_: any, index: number) => 
+    const voteCounts = poll.options.map((_: string, index: number) => 
       votes.filter(vote => vote.option_index === index).length
     )
 
@@ -102,7 +102,7 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to fetch updated votes' }, { status: 500 })
     }
 
-    const voteCounts = poll.options.map((_: any, index: number) => 
+    const voteCounts = poll.options.map((_: string, index: number) => 
       votes.filter(vote => vote.option_index === index).length
     )
 

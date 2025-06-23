@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
-import { put } from '@vercel/blob'
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,7 +55,7 @@ export async function POST(request: NextRequest) {
         const fileExt = image.name.split('.').pop()
         const fileName = `${Date.now()}.${fileExt}`
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('posts')
           .upload(fileName, image)
 
