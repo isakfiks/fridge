@@ -40,7 +40,12 @@ interface PostCardProps {
   getRelativeTime: (dateString: string) => string;
 }
 
-function ReplyItem({ reply, getRelativeTime, onReply, depth = 0 }: any) {
+function ReplyItem({ reply, getRelativeTime, onReply, depth = 0 }: { 
+  reply: Reply;
+  getRelativeTime: (dateString: string) => string;
+  onReply: (parentId: number, parentAuthor: string) => void;
+  depth?: number;
+}) {
   const maxDepth = 3;
   const indentClass = depth > 0 ? `ml-${Math.min(depth * 4, 12)}` : '';
   
@@ -163,7 +168,6 @@ export default function PostCard({ post, getRelativeTime }: PostCardProps) {
       })
 
       if (response.ok) {
-        const newReply = await response.json()
         // Refetch all replies to maintain proper tree structure
         await fetchReplies(true)
         setReplyContent('')
